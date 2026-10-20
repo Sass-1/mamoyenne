@@ -3,6 +3,7 @@
 import csv
 import os
 import re
+import shutil
 import sqlite3
 import sys
 import tkinter as tk
@@ -354,6 +355,45 @@ def chemin_ressource(nom):
     return Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / nom
 
 
+def integrer_menu_linux():
+    """Linux : ajoute MaMoyenne au menu des applications (lanceur .desktop + icône).
+
+    Refait à chaque lancement, pour suivre l'exécutable s'il a été déplacé.
+    """
+    if not sys.platform.startswith("linux") or not getattr(sys, "frozen", False):
+        return
+    try:
+        donnees = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+        icone = donnees / "icons" / "hicolor" / "512x512" / "apps" / "mamoyenne.png"
+        icone.parent.mkdir(parents=True, exist_ok=True)
+        source = chemin_ressource("assets/icone.png")
+        if source.exists() and (not icone.exists() or icone.stat().st_size != source.stat().st_size):
+            shutil.copyfile(source, icone)
+
+        exe = str(Path(sys.executable).resolve())
+        for car in ("\\", '"', "`", "$"):  # échappement imposé par la norme des fichiers .desktop
+            exe = exe.replace(car, "\\" + car)
+        contenu = (
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            f"Name={NOM_APP}\n"
+            "Comment=Calculer sa moyenne et suivre ses reprises\n"
+            f'Exec="{exe}"\n'
+            f"Icon={icone}\n"
+            "Terminal=false\n"
+            "Categories=Education;\n"
+            "Keywords=moyenne;notes;reprise;bulletin;\n"
+            f"StartupWMClass={NOM_APP}\n"
+        )
+        lanceur = donnees / "applications" / "mamoyenne.desktop"
+        lanceur.parent.mkdir(parents=True, exist_ok=True)
+        if not lanceur.exists() or lanceur.read_text(encoding="utf-8") != contenu:
+            lanceur.write_text(contenu, encoding="utf-8")
+            lanceur.chmod(0o755)
+    except OSError:
+        pass  # pas grave : l'application fonctionne sans entrée dans le menu
+
+
 # ---------- Widgets ----------
 
 class Bouton(tk.Label):
@@ -445,7 +485,7 @@ class ZoneDefilante(tk.Frame):
 
 class App(tk.Tk):
     def __init__(self, base=None):
-        super().__init__()
+        super().__init__(className=NOM_APP)  # nom de fenêtre : relie la fenêtre à son icône dans le dock
         self.title(NOM_APP)
         self.configure(bg=FOND)
         try:
@@ -1051,4 +1091,5 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
+    integrer_menu_linux()
     App().mainloop()

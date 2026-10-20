@@ -42,6 +42,10 @@ Les Mac Intel (avant fin 2020) ne sont pas pris en charge.
 2. Rendez-le exécutable : clic droit → **Propriétés** → **Permissions** → cocher **Autoriser l'exécution**
    (ou dans un terminal : `chmod +x MaMoyenne-Linux`).
 3. Double-cliquez dessus (ou `./MaMoyenne-Linux` dans un terminal).
+4. Dès ce premier lancement, **MaMoyenne apparaît dans le menu des applications**, avec son icône :
+   ensuite, il suffit de taper « MaMoyenne » dans la recherche.
+   Rangez le fichier à un endroit définitif avant (par exemple `~/Applications`) : si vous le déplacez,
+   relancez-le une fois depuis son nouvel emplacement pour mettre le menu à jour.
 
 > **Pourquoi ces avertissements ?** L'application n'est pas signée numériquement (la signature est payante).
 > Le code est entièrement visible dans ce dépôt.
@@ -77,6 +81,8 @@ Elles ne sont envoyées nulle part.
 - **Mettre à jour** : téléchargez la nouvelle version et remplacez l'ancien fichier. Vos notes sont conservées.
 - **Changer d'ordinateur** : **Exporter** en CSV sur l'ancien, puis **Importer** ce fichier sur le nouveau.
 - **Désinstaller** : supprimez le fichier de l'application, puis le dossier `MaMoyenne` indiqué ci-dessus.
+  Sous Linux, supprimez aussi `~/.local/share/applications/mamoyenne.desktop` et
+  `~/.local/share/icons/hicolor/512x512/apps/mamoyenne.png`.
 
 ## Pour les développeurs
 
