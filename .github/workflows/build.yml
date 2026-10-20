@@ -1,0 +1,62 @@
+# Construit l'exécutable pour Windows, macOS et Linux.
+# - À chaque push : les fichiers sont disponibles dans l'onglet « Actions » (section Artifacts).
+# - Pour publier une version à télécharger : créer un tag, ex. `git tag v1.0 && git push origin v1.0`.
+name: Construire les exécutables
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            fichier: MaMoyenne-Windows.exe
+          - os: macos-latest
+            fichier: MaMoyenne-macOS.zip
+          - os: ubuntu-22.04
+            fichier: MaMoyenne-Linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt pyinstaller pillow  # pillow : conversion de l'icône en .ico / .icns
+
+      - name: Construire
+        run: pyinstaller --onefile --windowed --name MaMoyenne --icon assets/icone.png --add-data "assets/icone.png${{ runner.os == 'Windows' && ';' || ':' }}assets" moyenne.py
+
+      - name: Préparer le fichier (Windows)
+        if: runner.os == 'Windows'
+        run: Move-Item dist/MaMoyenne.exe ${{ matrix.fichier }}
+
+      - name: Préparer le fichier (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --keepParent dist/MaMoyenne.app ${{ matrix.fichier }}
+
+      - name: Préparer le fichier (Linux)
+        if: runner.os == 'Linux'
+        run: mv dist/MaMoyenne ${{ matrix.fichier }} && chmod +x ${{ matrix.fichier }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.fichier }}
+          path: ${{ matrix.fichier }}
+
+      - name: Publier dans la Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.fichier }}

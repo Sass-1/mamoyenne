@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+build/
+dist/
+*.spec
+*.db
+notes.json
+# Fichier personnel avec les notes : ne pas publier
+AVERAGE.ods
