@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tkinter as tk
 import tkinter.font as tkfont
@@ -355,13 +356,30 @@ def chemin_ressource(nom):
     return Path(getattr(sys, "_MEIPASS", Path(__file__).parent)) / nom
 
 
-def integrer_menu_linux():
-    """Linux : ajoute MaMoyenne au menu des applications (lanceur .desktop + icône).
+def installer_copie(exe, cible):
+    """Copie l'exécutable dans `cible` s'il n'y est pas déjà, à l'identique.
 
-    Refait à chaque lancement, pour suivre l'exécutable s'il a été déplacé.
+    Écriture dans un fichier temporaire puis remplacement : fonctionne même si l'ancienne copie
+    est en cours d'exécution, et une nouvelle version téléchargée remplace l'ancienne.
     """
-    if not sys.platform.startswith("linux") or not getattr(sys, "frozen", False):
+    if exe == cible:
         return
+    if cible.exists() and cible.stat().st_size == exe.stat().st_size \
+            and cible.read_bytes() == exe.read_bytes():
+        return
+    cible.parent.mkdir(parents=True, exist_ok=True)
+    temporaire = cible.with_suffix(".tmp")
+    shutil.copyfile(exe, temporaire)
+    temporaire.chmod(0o755)
+    os.replace(temporaire, cible)
+
+
+def integrer_menu_linux():
+    """Linux : installe MaMoyenne et l'ajoute au menu des applications (lanceur .desktop + icône).
+
+    L'exécutable se copie dans ~/.local/share/MaMoyenne/MaMoyenne et le menu pointe vers cette copie :
+    le fichier téléchargé (ou le dossier du projet) peut ensuite être supprimé sans rien casser.
+    """
     try:
         donnees = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
         icone = donnees / "icons" / "hicolor" / "512x512" / "apps" / "mamoyenne.png"
@@ -370,7 +388,12 @@ def integrer_menu_linux():
         if source.exists() and (not icone.exists() or icone.stat().st_size != source.stat().st_size):
             shutil.copyfile(source, icone)
 
-        exe = str(Path(sys.executable).resolve())
+        installe = dossier_donnees() / NOM_APP
+        try:
+            installer_copie(Path(sys.executable).resolve(), installe)
+        except OSError:
+            installe = Path(sys.executable).resolve()  # copie impossible : on garde le fichier lancé
+        exe = str(installe)
         for car in ("\\", '"', "`", "$"):  # échappement imposé par la norme des fichiers .desktop
             exe = exe.replace(car, "\\" + car)
         contenu = (
@@ -392,6 +415,87 @@ def integrer_menu_linux():
             lanceur.chmod(0o755)
     except OSError:
         pass  # pas grave : l'application fonctionne sans entrée dans le menu
+
+
+def integrer_windows():
+    """Windows : installe MaMoyenne dans %LOCALAPPDATA%\\Programs\\MaMoyenne et crée ses raccourcis.
+
+    Raccourci dans le menu Démarrer (recréé s'il manque) et sur le Bureau (seulement à la première
+    installation, pour ne pas le remettre si l'utilisateur l'a supprimé). Le fichier téléchargé peut
+    ensuite être supprimé.
+    """
+    exe = Path(sys.executable).resolve()
+    installe = Path(os.environ["LOCALAPPDATA"]) / "Programs" / NOM_APP / f"{NOM_APP}.exe"
+    premiere_fois = not installe.exists()
+    try:
+        installer_copie(exe, installe)
+    except OSError:
+        # ancienne version ouverte (fichier verrouillé) ou copie impossible : on réessaiera plus tard
+        if premiere_fois:
+            return
+    menu = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / f"{NOM_APP}.lnk"
+    raccourcis = [] if menu.exists() else [f"'{ps(menu)}'"]
+    if premiere_fois:
+        raccourcis.append(f"(Join-Path ([Environment]::GetFolderPath('Desktop')) '{NOM_APP}.lnk')")
+    if not raccourcis:
+        return
+    script = "$w = New-Object -ComObject WScript.Shell; " + "".join(
+        f"$s = $w.CreateShortcut({chemin}); $s.TargetPath = '{ps(installe)}'; "
+        f"$s.WorkingDirectory = '{ps(installe.parent)}'; $s.IconLocation = '{ps(installe)},0'; "
+        "$s.Description = 'Calculer sa moyenne et suivre ses reprises'; $s.Save(); "
+        for chemin in raccourcis)
+    subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                    "-Command", script], capture_output=True, timeout=30,
+                   creationflags=subprocess.CREATE_NO_WINDOW)
+
+
+def ps(chemin):
+    """Chemin placé entre apostrophes dans une commande PowerShell (apostrophe doublée)."""
+    return str(chemin).replace("'", "''")
+
+
+def integrer_macos():
+    """macOS : copie MaMoyenne.app dans ~/Applications si elle a été lancée depuis ailleurs.
+
+    Spotlight et le Launchpad la trouvent alors, et le fichier téléchargé peut être supprimé.
+    """
+    exe = Path(sys.executable).resolve()  # .../MaMoyenne.app/Contents/MacOS/MaMoyenne
+    appli = exe.parents[2]
+    if appli.suffix != ".app":
+        return
+    if appli.parent in (Path("/Applications"), Path.home() / "Applications"):
+        return  # déjà rangée dans un dossier d'applications
+    cible = Path.home() / "Applications" / appli.name
+    exe_cible = cible / exe.relative_to(appli)
+    if exe_cible.exists() and exe_cible.read_bytes() == exe.read_bytes():
+        return  # cette version est déjà installée
+    cible.parent.mkdir(parents=True, exist_ok=True)
+    temporaire = cible.with_name(cible.name + ".tmp")
+    shutil.rmtree(temporaire, ignore_errors=True)
+    subprocess.run(["ditto", str(appli), str(temporaire)], check=True, capture_output=True, timeout=120)
+    # l'utilisateur a déjà accepté d'ouvrir l'application : la copie ne doit pas redemander
+    subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(temporaire)], capture_output=True, timeout=30)
+    shutil.rmtree(cible, ignore_errors=True)
+    temporaire.rename(cible)
+
+
+def integrer_au_systeme():
+    """Installe l'exécutable à un endroit permanent et l'ajoute au menu du système.
+
+    Seulement pour l'exécutable (pas en lançant moyenne.py). Facultatif : en cas d'échec,
+    l'application fonctionne quand même depuis le fichier lancé.
+    """
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        if sys.platform.startswith("linux"):
+            integrer_menu_linux()
+        elif sys.platform == "win32":
+            integrer_windows()
+        elif sys.platform == "darwin":
+            integrer_macos()
+    except (OSError, subprocess.SubprocessError, KeyError, IndexError):
+        pass
 
 
 # ---------- Widgets ----------
@@ -1091,5 +1195,5 @@ class App(tk.Tk):
 
 
 if __name__ == "__main__":
-    integrer_menu_linux()
+    integrer_au_systeme()
     App().mainloop()

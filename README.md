@@ -21,18 +21,23 @@ téléchargez le fichier qui correspond à votre ordinateur.
 
 1. Téléchargez **`MaMoyenne-Windows.exe`**.
    Si le navigateur affiche « fichier rarement téléchargé », cliquez sur **…** puis **Conserver**.
-2. Rangez le fichier où vous voulez (Bureau, Documents…).
-3. Double-cliquez dessus. La première fois, Windows peut afficher **« Windows a protégé votre ordinateur »** :
+2. Double-cliquez dessus. La première fois, Windows peut afficher **« Windows a protégé votre ordinateur »** :
    cliquez sur **Informations complémentaires**, puis **Exécuter quand même**.
+3. Dès ce premier lancement, MaMoyenne **s'installe** et crée un raccourci dans le **menu Démarrer**
+   et sur le **Bureau** : tapez « MaMoyenne » dans la recherche Windows.
+4. Vous pouvez ensuite **supprimer le fichier téléchargé** : l'application installée et vos notes restent.
 
 ### macOS (Mac à puce Apple : M1, M2, M3…)
 
 1. Téléchargez **`MaMoyenne-macOS.zip`** et double-cliquez dessus pour le décompresser.
-2. Glissez **MaMoyenne** dans le dossier **Applications**.
-3. Ouvrez-le. La première fois, macOS bloque l'application car elle ne vient pas de l'App Store :
+2. Ouvrez **MaMoyenne**. La première fois, macOS bloque l'application car elle ne vient pas de l'App Store :
    - **macOS 14 ou plus ancien** : clic droit sur MaMoyenne → **Ouvrir** → **Ouvrir**.
    - **macOS 15 ou plus récent** : ouvrez **Réglages Système → Confidentialité et sécurité**, descendez
      jusqu'au message sur MaMoyenne et cliquez sur **Ouvrir quand même**.
+3. Dès ce premier lancement, MaMoyenne **s'installe** dans le dossier **Applications** de votre compte
+   (`~/Applications`) : Spotlight (⌘ + Espace) et le Launchpad la trouvent.
+   Vous pouvez aussi la glisser vous-même dans **Applications** : elle n'est alors pas copiée.
+4. Vous pouvez ensuite **supprimer le fichier téléchargé** et le `.zip` : l'application installée et vos notes restent.
 
 Les Mac Intel (avant fin 2020) ne sont pas pris en charge.
 
@@ -42,10 +47,9 @@ Les Mac Intel (avant fin 2020) ne sont pas pris en charge.
 2. Rendez-le exécutable : clic droit → **Propriétés** → **Permissions** → cocher **Autoriser l'exécution**
    (ou dans un terminal : `chmod +x MaMoyenne-Linux`).
 3. Double-cliquez dessus (ou `./MaMoyenne-Linux` dans un terminal).
-4. Dès ce premier lancement, **MaMoyenne apparaît dans le menu des applications**, avec son icône :
-   ensuite, il suffit de taper « MaMoyenne » dans la recherche.
-   Rangez le fichier à un endroit définitif avant (par exemple `~/Applications`) : si vous le déplacez,
-   relancez-le une fois depuis son nouvel emplacement pour mettre le menu à jour.
+4. Dès ce premier lancement, MaMoyenne **s'installe** dans `~/.local/share/MaMoyenne` et
+   **apparaît dans le menu des applications**, avec son icône : tapez « MaMoyenne » dans la recherche.
+5. Vous pouvez ensuite **supprimer le fichier téléchargé** : l'application installée et vos notes restent.
 
 > **Pourquoi ces avertissements ?** L'application n'est pas signée numériquement (la signature est payante).
 > Le code est entièrement visible dans ce dépôt.
@@ -78,11 +82,16 @@ Elles ne sont envoyées nulle part.
 | macOS | `~/Library/Application Support/MaMoyenne/moyenne.db` |
 | Linux | `~/.local/share/MaMoyenne/moyenne.db` |
 
-- **Mettre à jour** : téléchargez la nouvelle version et remplacez l'ancien fichier. Vos notes sont conservées.
+- **Mettre à jour** : téléchargez la nouvelle version et lancez-la une fois : elle remplace la version
+  installée. Vos notes sont conservées. (Sous Windows, fermez d'abord MaMoyenne si elle est ouverte.)
 - **Changer d'ordinateur** : **Exporter** en CSV sur l'ancien, puis **Importer** ce fichier sur le nouveau.
-- **Désinstaller** : supprimez le fichier de l'application, puis le dossier `MaMoyenne` indiqué ci-dessus.
-  Sous Linux, supprimez aussi `~/.local/share/applications/mamoyenne.desktop` et
-  `~/.local/share/icons/hicolor/512x512/apps/mamoyenne.png`.
+- **Désinstaller** :
+  - Windows : supprimez `%LOCALAPPDATA%\Programs\MaMoyenne`, `%APPDATA%\MaMoyenne`, et les raccourcis
+    MaMoyenne du Bureau et du menu Démarrer.
+  - macOS : mettez **MaMoyenne** (dans `~/Applications`) à la corbeille, puis supprimez
+    `~/Library/Application Support/MaMoyenne`.
+  - Linux : supprimez `~/.local/share/MaMoyenne`, `~/.local/share/applications/mamoyenne.desktop` et
+    `~/.local/share/icons/hicolor/512x512/apps/mamoyenne.png`.
 
 ## Pour les développeurs
 
